@@ -5,13 +5,6 @@ import pytest
 
 from multi_queue import Broadcast
 
-if sys.version_info < (3, 10):
-    from asyncstdlib import anext
-
-    def aiter(it):
-        return it.__aiter__()
-
-
 pytestmark = pytest.mark.asyncio
 
 ENOUGH_TIME_TO_LAUNCH_ALL_TASKS = 0.01
@@ -19,16 +12,19 @@ ENOUGH_TIME_TO_LAUNCH_ALL_TASKS = 0.01
 
 async def test_lockstep():
     async def check_next_value(consumer, value):
-        assert await anext(consumer) == value
+        assert await consumer.__anext__() == value
 
     queue = Broadcast()
     nb_values = 10
     nb_consumers = 10
-    consumers = [aiter(queue) for _ in range(nb_consumers)]
+    consumers = [queue.__aiter__() for _ in range(nb_consumers)]
     for i in range(nb_values):
         queue.put(i)
         await asyncio.gather(
-            *(asyncio.create_task(check_next_value(consumer, i)) for consumer in consumers)
+            *(
+                asyncio.create_task(check_next_value(consumer, i))
+                for consumer in consumers
+            )
         )
 
 
